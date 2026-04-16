@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Plus, Trash2, Copy, Check, Wand2, RotateCcw } from "lucide-react";
 
 export default function App() {
@@ -39,6 +39,57 @@ export default function App() {
     }
     return total;
   }, [transcript, pairs, caseInsensitive, wholeWord]);
+
+  // Refs so the highlight overlay scrolls in sync with the textarea
+  const inputMirrorRef = useRef(null);
+
+  // Escape HTML so user input can't break the overlay
+  const escapeHtml = (s) =>
+    s.replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+    }[c]));
+
+  // Wrap every match of `terms` in <mark> tags
+  const buildHighlightHTML = (text, terms) => {
+    if (!text) return "";
+    const valid = terms.filter((t) => t && t.trim());
+    if (!valid.length) return escapeHtml(text);
+    const flags = caseInsensitive ? "gi" : "g";
+    const escaped = valid.map((t) => escapeRegex(t.trim())).join("|");
+    const pattern = wholeWord ? `\\b(${escaped})\\b` : `(${escaped})`;
+    let regex;
+    try {
+      regex = new RegExp(pattern, flags);
+    } catch (e) {
+      return escapeHtml(text);
+    }
+    let result = "";
+    let lastIndex = 0;
+    let match;
+    while ((match = regex.exec(text)) !== null) {
+      result += escapeHtml(text.slice(lastIndex, match.index));
+      result += `<mark class="bg-yellow-200 rounded px-0.5 text-stone-900">${escapeHtml(match[0])}</mark>`;
+      lastIndex = match.index + match[0].length;
+    }
+    result += escapeHtml(text.slice(lastIndex));
+    return result;
+  };
+
+  // Highlight the FIND terms in the original transcript
+  const inputHighlightHTML = useMemo(
+    () => buildHighlightHTML(transcript, pairs.map((p) => p.find)),
+    [transcript, pairs, caseInsensitive, wholeWord]
+  );
+
+  // Highlight the REPLACEMENT terms in the cleaned output
+  const outputHighlightHTML = useMemo(
+    () => buildHighlightHTML(output, pairs.map((p) => p.replace)),
+    [output, pairs, caseInsensitive, wholeWord]
+  );
 
   const addPair = () => {
     const nextId = Math.max(...pairs.map((p) => p.id), 0) + 1;
@@ -131,12 +182,30 @@ export default function App() {
                 {transcript.length.toLocaleString()} chars
               </span>
             </div>
-            <textarea
-              value={transcript}
-              onChange={(e) => setTranscript(e.target.value)}
-              placeholder="Paste your transcript here..."
-              className="flex-1 min-h-[300px] w-full p-3 border border-stone-200 rounded-md text-sm font-mono resize-y focus:outline-none focus:ring-2 focus:ring-stone-400"
-            />
+            <div className="relative flex-1 min-h-[300px] border border-stone-200 rounded-md overflow-hidden focus-within:ring-2 focus-within:ring-stone-400">
+              <div
+                ref={inputMirrorRef}
+                aria-hidden="true"
+                className="absolute inset-0 p-3 text-sm font-mono whitespace-pre-wrap break-words overflow-auto pointer-events-none text-stone-900"
+                dangerouslySetInnerHTML={{
+                  __html:
+                    inputHighlightHTML ||
+                    '<span class="text-stone-400">Paste your transcript here...</span>',
+                }}
+              />
+              <textarea
+                value={transcript}
+                onChange={(e) => setTranscript(e.target.value)}
+                onScroll={(e) => {
+                  if (inputMirrorRef.current) {
+                    inputMirrorRef.current.scrollTop = e.target.scrollTop;
+                  }
+                }}
+                spellCheck={false}
+                className="absolute inset-0 w-full h-full p-3 text-sm font-mono resize-none bg-transparent caret-stone-900 focus:outline-none placeholder:text-transparent"
+                style={{ color: "transparent", WebkitTextFillColor: "transparent" }}
+              />
+            </div>
           </div>
 
           <div className="bg-white rounded-lg border border-stone-200 p-4 flex flex-col">
@@ -163,12 +232,16 @@ export default function App() {
                 </button>
               </div>
             </div>
-            <textarea
-              value={output}
-              readOnly
-              placeholder="Your cleaned transcript will appear here..."
-              className="flex-1 min-h-[300px] w-full p-3 border border-stone-200 rounded-md text-sm font-mono resize-y bg-stone-50 focus:outline-none"
-            />
+            <div className="flex-1 min-h-[300px] border border-stone-200 rounded-md bg-stone-50 overflow-auto">
+              <div
+                className="p-3 text-sm font-mono whitespace-pre-wrap break-words text-stone-900"
+                dangerouslySetInnerHTML={{
+                  __html:
+                    outputHighlightHTML ||
+                    '<span class="text-stone-400">Your cleaned transcript will appear here...</span>',
+                }}
+              />
+            </div>
           </div>
         </div>
 
