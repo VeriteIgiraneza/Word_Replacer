@@ -165,8 +165,8 @@ export default function App() {
   }, [copied]);
 
   return (
-    <div className="min-h-screen bg-stone-50 p-4 sm:p-6">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-stone-50 px-4 py-4 sm:px-8 sm:py-6 lg:px-12">
+      <div className="w-full">
         <header className="mb-6">
           <h1 className="text-2xl font-semibold text-stone-900">Transcript Name Replacer</h1>
           <p className="text-sm text-stone-600 mt-1">
