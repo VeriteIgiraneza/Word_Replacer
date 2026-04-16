@@ -238,7 +238,7 @@ export default function App() {
                 dangerouslySetInnerHTML={{
                   __html:
                     outputHighlightHTML ||
-                    '<span class="text-stone-400">Your cleaned transcript will appear here...</span>',
+                    '<span class="text-stone-400">Your cleaned transcript will appear somewhere here...</span>',
                 }}
               />
             </div>
