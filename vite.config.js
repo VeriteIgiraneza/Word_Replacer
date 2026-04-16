@@ -7,5 +7,5 @@ import tailwindcss from "@tailwindcss/vite";
 // then base should be "/my-cool-repo/"
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  base: "/name-replacer/",
+  base: "/Word_Replacer/",
 });
